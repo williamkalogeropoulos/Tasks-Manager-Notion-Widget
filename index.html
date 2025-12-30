@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glassmorphism Task Manager</title>
+    
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Dynamic Background Handling */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 2rem;
+            transition: background 0.5s ease;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.5); }
+
+        /* Glass Effect */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        /* Settings Panel Glass - Darker */
+        .glass-settings {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            height: 4px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body>
+
+    <div id="root" class="w-full px-4 flex justify-center"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Background presets
+        const BACKGROUNDS = {
+            aurora: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            midnight: 'linear-gradient(to top, #09203f 0%, #537895 100%)',
+            ocean: 'linear-gradient(to right, #4facfe 0%, #00f2fe 100%)',
+            sunset: 'linear-gradient(to right, #fa709a 0%, #fee140 100%)',
+            forest: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)',
+            transparent: 'transparent'
+        };
+
+        // Font presets
+        const FONTS = {
+            inter: "'Inter', sans-serif",
+            serif: "'Playfair Display', serif",
+            mono: "'JetBrains Mono', monospace",
+            pop: "'Poppins', sans-serif"
+        };
+
+        // Color presets (Tailwind classes for text/bg)
+        const ACCENTS = {
+            purple: 'text-purple-400',
+            blue: 'text-blue-400',
+            pink: 'text-pink-400',
+            emerald: 'text-emerald-400',
+            amber: 'text-amber-400'
+        };
+
+        const App = () => {
+            // --- State: Data ---
+            const [tasks, setTasks] = useState(() => {
+                const saved = localStorage.getItem('notion-glass-tasks');
+                return saved ? JSON.parse(saved) : [
+                    { id: 1, text: 'Open settings ↗', completed: false },
+                    { id: 2, text: 'Customize your widget', completed: false }
+                ];
+            });
+            const [inputValue, setInputValue] = useState('');
+
+            // --- State: Configuration ---
+            const [config, setConfig] = useState(() => {
+                const saved = localStorage.getItem('notion-glass-config');
+                return saved ? JSON.parse(saved) : {
+                    bgId: 'aurora',
+                    fontId: 'inter',
+                    accentId: 'purple',
+                    width: 450 // px
+                };
+            });
+
+            const [showSettings, setShowSettings] = useState(false);
+
+            // --- Effects ---
+            
+            // Persist Tasks
+            useEffect(() => {
+                localStorage.setItem('notion-glass-tasks', JSON.stringify(tasks));
+                if (window.lucide) window.lucide.createIcons();
+            }, [tasks]);
+
+            // Persist Config & Apply Body Background
+            useEffect(() => {
+                localStorage.setItem('notion-glass-config', JSON.stringify(config));
+                document.body.style.background = BACKGROUNDS[config.bgId];
+                if (window.lucide) window.lucide.createIcons();
+            }, [config]);
+
+            // Initial Icons
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [showSettings]); // Re-run when settings toggle to catch icons inside settings
+
+            // --- Handlers ---
+
+            const addTask = (e) => {
+                e.preventDefault();
+                if (!inputValue.trim()) return;
+                setTasks([{ id: Date.now(), text: inputValue, completed: false }, ...tasks]);
+                setInputValue('');
+            };
+
+            const toggleTask = (id) => {
+                setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+            };
+
+            const deleteTask = (id) => {
+                setTasks(tasks.filter(t => t.id !== id));
+            };
+
+            const updateConfig = (key, value) => {
+                setConfig(prev => ({ ...prev, [key]: value }));
+            };
+
+            // --- Render ---
+
+            return (
+                <div 
+                    className="glass-panel rounded-2xl text-white transition-all duration-300 relative overflow-hidden flex flex-col"
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: `${config.width}px`,
+                        fontFamily: FONTS[config.fontId]
+                    }}
+                >
+                    
+                    {/* Header */}
+                    <div className="p-6 pb-2 flex justify-between items-start">
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight drop-shadow-md">Tasks</h1>
+                            <p className="text-xs text-white/60 mt-1 font-light">
+                                {tasks.filter(t => !t.completed).length} remaining
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => setShowSettings(!showSettings)}
+                            className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                        >
+                            <i data-lucide="settings-2" className="w-5 h-5 opacity-90"></i>
+                        </button>
+                    </div>
+
+                    {/* Settings Panel (Collapsible) */}
+                    {showSettings && (
+                        <div className="glass-settings p-5 mx-4 mb-4 rounded-xl text-sm animate-[fadeIn_0.3s_ease-out]">
+                            <div className="space-y-4">
+                                
+                                {/* Backgrounds */}
+                                <div>
+                                    <label className="block text-white/50 mb-2 text-xs uppercase tracking-wider">Background</label>
+                                    <div className="flex gap-2 overflow-x-auto pb-1">
+                                        {Object.keys(BACKGROUNDS).map(bgKey => (
+                                            <button
+                                                key={bgKey}
+                                                onClick={() => updateConfig('bgId', bgKey)}
+                                                className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex-shrink-0 ${config.bgId === bgKey ? 'border-white scale-110' : 'border-white/20'}`}
+                                                style={{ background: bgKey === 'transparent' ? 
+                                                    'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 
+                                                    BACKGROUNDS[bgKey],
+                                                    backgroundColor: bgKey === 'transparent' ? '#fff' : 'transparent',
+                                                    backgroundSize: bgKey === 'transparent' ? '10px 10px' : 'auto'
+                                                }}
+                                                title={bgKey}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Fonts & Colors Grid */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-white/50 mb-2 text-xs uppercase tracking-wider">Font</label>
+                                        <select 
+                                            value={config.fontId}
+                                            onChange={(e) => updateConfig('fontId', e.target.value)}
+                                            className="w-full bg-white/10 border border-white/20 rounded px-2 py-1 text-white text-xs outline-none"
+                                        >
+                                            <option value="inter" className="text-black">Standard</option>
+                                            <option value="serif" className="text-black">Elegant</option>
+                                            <option value="mono" className="text-black">Coding</option>
+                                            <option value="pop" className="text-black">Modern</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-white/50 mb-2 text-xs uppercase tracking-wider">Accent</label>
+                                        <div className="flex gap-2">
+                                            {Object.keys(ACCENTS).map(cKey => (
+                                                <button
+                                                    key={cKey}
+                                                    onClick={() => updateConfig('accentId', cKey)}
+                                                    className={`w-5 h-5 rounded-full ${config.accentId === cKey ? 'ring-2 ring-white' : 'opacity-50 hover:opacity-100'} bg-${cKey === 'emerald' ? 'emerald' : cKey === 'amber' ? 'amber' : cKey}-400`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Width Slider */}
+                                <div>
+                                    <div className="flex justify-between text-xs text-white/50 mb-1">
+                                        <span className="uppercase tracking-wider">Width</span>
+                                        <span>{config.width}px</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="300" 
+                                        max="800" 
+                                        value={config.width}
+                                        onChange={(e) => updateConfig('width', Number(e.target.value))}
+                                        className="w-full h-1"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Input */}
+                    <form onSubmit={addTask} className="px-6 mb-4 relative">
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder="New task..."
+                            className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 pl-10 text-sm text-white placeholder-white/40 focus:outline-none focus:bg-white/10 focus:border-white/30 transition-all"
+                        />
+                        <i data-lucide="plus" className="absolute left-9 top-3.5 w-4 h-4 text-white/60"></i>
+                    </form>
+
+                    {/* Task List */}
+                    <div className="px-6 pb-6 space-y-2 overflow-y-auto max-h-[400px]">
+                        {tasks.length === 0 && (
+                            <div className="text-center py-6 text-white/30 text-xs">
+                                All caught up
+                            </div>
+                        )}
+                        {tasks.map(task => (
+                            <div 
+                                key={task.id}
+                                className={`group flex items-center justify-between p-2 rounded-lg transition-all hover:bg-white/5 ${task.completed ? 'opacity-50' : ''}`}
+                            >
+                                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                                    <button 
+                                        onClick={() => toggleTask(task.id)}
+                                        className={`w-5 h-5 rounded border flex items-center justify-center transition-all flex-shrink-0 ${
+                                            task.completed 
+                                            ? `bg-white border-white ${ACCENTS[config.accentId].replace('text-', 'text-')}` // Apply color to icon
+                                            : 'border-white/30 hover:border-white/60'
+                                        }`}
+                                    >
+                                        {task.completed && <i data-lucide="check" className={`w-3 h-3 stroke-[4] ${ACCENTS[config.accentId]}`}></i>}
+                                    </button>
+                                    <span 
+                                        className={`text-sm truncate cursor-pointer select-none transition-all ${task.completed ? 'line-through decoration-white/50' : ''}`}
+                                        onClick={() => toggleTask(task.id)}
+                                    >
+                                        {task.text}
+                                    </span>
+                                </div>
+                                <button 
+                                    onClick={() => deleteTask(task.id)}
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-white/10 rounded-md text-white/60 hover:text-red-300 transition-all"
+                                >
+                                    <i data-lucide="x" className="w-3 h-3"></i>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
